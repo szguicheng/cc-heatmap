@@ -33,7 +33,7 @@ export function queryDailyData(
   try {
     const sql = METRIC_SQL[metric];
     const stmt = db.prepare(sql);
-    const rows = stmt.all(fromDate, toDate) as DailyData[];
+    const rows = stmt.all(fromDate, toDate) as unknown as DailyData[];
     return rows;
   } finally {
     db.close();
