@@ -106,6 +106,8 @@ body{
   border-radius:8px;padding:2rem;overflow-x:auto;max-width:100%
 }
 h1{font-size:1.25rem;font-weight:600;margin-bottom:1.5rem;color:${mc.headingColor}}
+h1 .n{font-size:2rem;font-weight:800;margin-right:.35em}
+h1 .u{font-size:.85rem;font-weight:400;color:${mc.mutedColor}}
 .g{display:flex;gap:0}
 .h{
   display:grid;
@@ -124,7 +126,7 @@ h1{font-size:1.25rem;font-weight:600;margin-bottom:1.5rem;color:${mc.headingColo
 </head>
 <body>
 <div class="wrap">
-  <h1>${totalStr} ${mLabel}</h1>
+  <h1><span class="n">${totalStr}</span><span class="u">${mLabel}</span></h1>
   <div class="g">
     <div class="h">
       ${monthLabelsHtml}
