@@ -1,5 +1,5 @@
 import type { GridData } from './heatmap.js';
-import { getColors, emptyColor, noDataColor, type ThemeName } from './colors.js';
+import { getColors, getModeColors, type ThemeName, type ModeName } from './colors.js';
 import type { Metric } from './data.js';
 
 function esc(s: string): string {
@@ -7,6 +7,7 @@ function esc(s: string): string {
 }
 
 function formatValue(value: number): string {
+  if (value >= 1_000_000_000) return `${(value / 1_000_000_000).toFixed(1)}B`;
   if (value >= 1_000_000) return `${(value / 1_000_000).toFixed(1)}M`;
   if (value >= 1_000) return `${(value / 1_000).toFixed(1)}K`;
   return String(value);
@@ -22,31 +23,37 @@ function metricLabel(metric: Metric): string {
   return metric;
 }
 
-export function renderHtml(grid: GridData, metric: Metric, theme: ThemeName): string {
+export function renderHtml(
+  grid: GridData,
+  metric: Metric,
+  theme: ThemeName,
+  mode: ModeName,
+): string {
   const colors = getColors(theme);
+  const mc = getModeColors(mode);
   const label = esc(metric);
   const mLabel = esc(metricLabel(metric));
   const totalCols = grid.weeks.length + 1;
 
-  // Build month labels (row 1), placed at the column for that week
+  // Month labels
   let monthLabelsHtml = '';
   for (const [weekIdx, week] of grid.weeks.entries()) {
     if (week.monthLabel) {
       monthLabelsHtml +=
-        `<div style="grid-column:${weekIdx + 2};grid-row:1" class="month-label">${esc(week.monthLabel)}</div>`;
+        `<div style="grid-column:${weekIdx + 2};grid-row:1" class="ml">${esc(week.monthLabel)}</div>`;
     }
   }
 
-  // Build day labels (Mon, Wed, Fri) in column 1
+  // Day labels
   let dayLabelsHtml = '';
   for (let i = 0; i < 7; i++) {
     if (i % 2 === 1) {
       dayLabelsHtml +=
-        `<div class="day-label" style="grid-column:1;grid-row:${i + 2}">${esc(grid.dayLabels[i])}</div>`;
+        `<div class="dl" style="grid-column:1;grid-row:${i + 2}">${esc(grid.dayLabels[i])}</div>`;
     }
   }
 
-  // Build cells: each cell at (weekIdx+2, dayOfWeek+2) using explicit grid positioning
+  // Cells
   let allCells = '';
   for (const [weekIdx, week] of grid.weeks.entries()) {
     const col = weekIdx + 2;
@@ -55,12 +62,12 @@ export function renderHtml(grid: GridData, metric: Metric, theme: ThemeName): st
       if (cell.date === '') continue;
 
       const d = new Date(cell.date + 'T00:00:00');
-      const row = d.getDay() + 2; // 0=Sun → row 2
+      const row = d.getDay() + 2;
 
       let bg: string;
       let tooltip: string;
       if (cell.level === -1) {
-        bg = noDataColor;
+        bg = mc.noDataCell;
         tooltip = `${esc(cell.date)} · No data`;
       } else if (cell.level === 0) {
         bg = colors[0];
@@ -70,13 +77,13 @@ export function renderHtml(grid: GridData, metric: Metric, theme: ThemeName): st
         tooltip = formatTooltip(cell.date, cell.value, label);
       }
       allCells +=
-        `<div class="cell" style="grid-column:${col};grid-row:${row};background:${bg}" title="${esc(tooltip)}" data-level="${cell.level}"></div>`;
+        `<div class="c" style="grid-column:${col};grid-row:${row};background:${bg}" title="${esc(tooltip)}" data-lv="${cell.level}"></div>`;
     }
   }
 
-  // Legend boxes
+  // Legend
   const legendBoxes = colors
-    .map((c) => `<div class="legend-box" style="background:${c}"></div>`)
+    .map((c) => `<div class="lb" style="background:${c}"></div>`)
     .join('');
 
   const totalStr = formatValue(grid.totalValue);
@@ -88,95 +95,53 @@ export function renderHtml(grid: GridData, metric: Metric, theme: ThemeName): st
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>Claude Code Heatmap — ${label}</title>
 <style>
-*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
-body {
-  font-family: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
-  background: #0d1117;
-  color: #c9d1d9;
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  min-height: 100vh;
-  padding: 2rem;
+*,*::before,*::after{box-sizing:border-box;margin:0;padding:0}
+body{
+  font-family:-apple-system,BlinkMacSystemFont,'Segoe UI',Roboto,sans-serif;
+  background:${mc.bodyBg};
+  color:${mc.textColor};
+  display:flex;justify-content:center;align-items:center;
+  min-height:100vh;padding:2rem
 }
-.container {
-  background: #161b22;
-  border: 1px solid #30363d;
-  border-radius: 8px;
-  padding: 2rem;
-  overflow-x: auto;
-  max-width: 100%;
+.wrap{
+  background:${mc.containerBg};
+  border:1px solid ${mc.containerBorder};
+  border-radius:8px;padding:2rem;overflow-x:auto;max-width:100%
 }
-h1 {
-  font-size: 1.25rem;
-  font-weight: 600;
-  margin-bottom: 1.5rem;
-  color: #f0f6fc;
+h1{font-size:1.25rem;font-weight:600;margin-bottom:1.5rem;color:${mc.headingColor}}
+.g{display:flex;gap:0}
+.h{
+  display:grid;
+  grid-template-columns:repeat(${totalCols},13px);
+  grid-template-rows:20px repeat(7,13px);
+  gap:3px
 }
-.grid-wrapper { display: flex; gap: 0; }
-.heatmap-grid {
-  display: grid;
-  grid-template-columns: repeat(${totalCols}, 13px);
-  grid-template-rows: 20px repeat(7, 13px);
-  gap: 3px;
-}
-.month-label {
-  font-size: 10px;
-  color: #6e7681;
-  line-height: 20px;
-}
-.cell {
-  width: 13px;
-  height: 13px;
-  border-radius: 2px;
-}
-.day-label {
-  font-size: 10px;
-  line-height: 13px;
-  color: #6e7681;
-  display: flex;
-  align-items: center;
-}
-.footer {
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  margin-top: 1rem;
-  font-size: 11px;
-  color: #6e7681;
-}
-.legend {
-  display: flex;
-  align-items: center;
-  gap: 4px;
-}
-.legend-box {
-  width: 13px;
-  height: 13px;
-  border-radius: 2px;
-}
-.total {
-  text-align: right;
-}
+.ml{font-size:10px;color:${mc.mutedColor};line-height:20px}
+.c{width:13px;height:13px;border-radius:2px}
+.dl{font-size:10px;line-height:13px;color:${mc.mutedColor};display:flex;align-items:center}
+.f{display:flex;justify-content:space-between;align-items:center;margin-top:1rem;font-size:11px;color:${mc.mutedColor}}
+.lg{display:flex;align-items:center;gap:4px}
+.lb{width:13px;height:13px;border-radius:2px}
+.tt{text-align:right}
 </style>
 </head>
 <body>
-<div class="container">
+<div class="wrap">
   <h1>Claude Code · ${label}</h1>
-  <div class="grid-wrapper">
-    <div class="heatmap-grid">
+  <div class="g">
+    <div class="h">
       ${monthLabelsHtml}
       ${dayLabelsHtml}
       ${allCells}
     </div>
   </div>
-  <div class="footer">
-    <div class="legend">
+  <div class="f">
+    <div class="lg">
       <span>Less</span>
       ${legendBoxes}
       <span>More</span>
     </div>
-    <div class="total">${totalStr} ${mLabel}</div>
+    <div class="tt">${totalStr} ${mLabel}</div>
   </div>
 </div>
 </body>

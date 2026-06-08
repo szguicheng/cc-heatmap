@@ -8,7 +8,7 @@ export interface DailyData {
 }
 
 const METRIC_SQL: Record<Metric, string> = {
-  tokens: `SELECT date(timestamp) as date, SUM(input_tokens + output_tokens) as value
+  tokens: `SELECT date(timestamp) as date, SUM(input_tokens + output_tokens + cache_read_tokens + cache_creation_tokens) as value
            FROM turns WHERE date(timestamp) >= ? AND date(timestamp) <= ?
            GROUP BY date(timestamp) ORDER BY date(timestamp)`,
 

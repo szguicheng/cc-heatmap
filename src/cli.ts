@@ -2,7 +2,7 @@ import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { writeFileSync, existsSync } from 'node:fs';
 import type { Metric } from './data.js';
-import type { ThemeName } from './colors.js';
+import type { ThemeName, ModeName } from './colors.js';
 import { queryDailyData } from './data.js';
 import { buildGrid } from './heatmap.js';
 import { renderHtml } from './render.js';
@@ -14,11 +14,13 @@ export interface CliOptions {
   metric: Metric;
   output: string;
   theme: ThemeName;
+  mode: ModeName;
   dbPath: string;
 }
 
 const VALID_METRICS: Metric[] = ['tokens', 'messages', 'tool-calls'];
 const VALID_THEMES: ThemeName[] = ['orange', 'green', 'purple'];
+const VALID_MODES: ModeName[] = ['dark', 'light'];
 
 const HELP = `cc-heatmap — Visualize Claude Code usage as a GitHub-style heatmap
 
@@ -30,7 +32,8 @@ Options:
   --to <date>       End date YYYY-MM-DD
   --metric <name>   Metric: tokens | messages | tool-calls (default: tokens)
   --output <path>   Output HTML file path (default: cc-heatmap-<today>.html)
-  --theme <name>    Color theme: orange | green | purple (default: orange)
+  --theme <name>    Color: orange | green | purple (default: orange)
+  --mode <name>     Background: dark | light (default: dark)
   --db <path>       Path to usage.db (default: ~/.claude/usage.db)
   --help, -h        Show this help
 `;
@@ -82,6 +85,15 @@ export function parseArgs(argv: string[]): CliOptions | null {
         break;
       }
 
+      case '--mode': {
+        const val = argv[++i] as ModeName;
+        if (!VALID_MODES.includes(val)) {
+          throw new Error(`Invalid mode: ${val}. Must be one of: ${VALID_MODES.join(', ')}`);
+        }
+        opts.mode = val;
+        break;
+      }
+
       case '--output':
         opts.output = argv[++i];
         break;
@@ -103,6 +115,7 @@ export function parseArgs(argv: string[]): CliOptions | null {
     metric: opts.metric ?? 'tokens',
     output: opts.output ?? '',
     theme: opts.theme ?? 'orange',
+    mode: opts.mode ?? 'dark',
     dbPath: opts.dbPath ?? join(homedir(), '.claude', 'usage.db'),
   };
 }
@@ -143,7 +156,7 @@ export async function main(): Promise<void> {
   const [fromDate, toDate] = computeDateRange(opts);
   const data = queryDailyData(opts.dbPath, fromDate, toDate, opts.metric);
   const grid = buildGrid(data, fromDate, toDate);
-  const html = renderHtml(grid, opts.metric, opts.theme);
+  const html = renderHtml(grid, opts.metric, opts.theme, opts.mode);
 
   const outputPath = opts.output || defaultOutputPath();
   writeFileSync(outputPath, html, 'utf-8');

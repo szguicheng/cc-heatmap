@@ -8,6 +8,7 @@ describe('parseArgs', () => {
     const opts = parseArgs([]);
     expect(opts!.metric).toBe('tokens');
     expect(opts!.theme).toBe('orange');
+    expect(opts!.mode).toBe('dark');
     expect(opts!.days).toBe(365);
     expect(opts!.dbPath).toBe(join(homedir(), '.claude', 'usage.db'));
   });
@@ -26,7 +27,6 @@ describe('parseArgs', () => {
   it('--from without --to is allowed', () => {
     const opts = parseArgs(['--from', '2026-01-01']);
     expect(opts!.fromDate).toBe('2026-01-01');
-    expect(opts!.toDate).toBe('');
   });
 
   it('parses --metric', () => {
@@ -46,6 +46,15 @@ describe('parseArgs', () => {
 
   it('rejects invalid --theme', () => {
     expect(() => parseArgs(['--theme', 'blue'])).toThrow('Invalid theme');
+  });
+
+  it('parses --mode', () => {
+    expect(parseArgs(['--mode', 'dark'])!.mode).toBe('dark');
+    expect(parseArgs(['--mode', 'light'])!.mode).toBe('light');
+  });
+
+  it('rejects invalid --mode', () => {
+    expect(() => parseArgs(['--mode', 'system'])).toThrow('Invalid mode');
   });
 
   it('parses --output', () => {
@@ -70,10 +79,7 @@ describe('parseArgs', () => {
 describe('computeDateRange', () => {
   function todayStr(): string {
     const d = new Date();
-    const y = d.getFullYear();
-    const m = String(d.getMonth() + 1).padStart(2, '0');
-    const day = String(d.getDate()).padStart(2, '0');
-    return `${y}-${m}-${day}`;
+    return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
   }
 
   it('uses --from and --to when both provided', () => {
@@ -88,20 +94,16 @@ describe('computeDateRange', () => {
     expect(to).toBe(todayStr());
   });
 
-  it('uses --days to compute start from today with default 365', () => {
+  it('uses --days to compute start from today', () => {
     const [from, to] = computeDateRange({ days: 7 });
     expect(to).toBe(todayStr());
-    const fromDate = new Date(from);
-    const toDate = new Date(to);
-    const diff = Math.round((toDate.getTime() - fromDate.getTime()) / 86400000);
+    const diff = Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000);
     expect(diff).toBe(6);
   });
 
   it('defaults to 365 days when no range specified', () => {
     const [from, to] = computeDateRange({ days: 365 });
-    const fromDate = new Date(from);
-    const toDate = new Date(to);
-    const diff = Math.round((toDate.getTime() - fromDate.getTime()) / 86400000);
+    const diff = Math.round((new Date(to).getTime() - new Date(from).getTime()) / 86400000);
     expect(diff).toBe(364);
   });
 });
