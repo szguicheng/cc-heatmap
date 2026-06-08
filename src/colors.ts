@@ -6,6 +6,7 @@ export const themes: Record<ThemeName, readonly string[]> = {
   purple: ['#e8d5f5', '#b77dd6', '#8e4db8', '#6b2d94', '#481a6e'],
 };
 
+export const noDataColor = '#161b22';
 export const emptyColor = '#1a1a2e';
 
 export function getColors(name: ThemeName): readonly string[] {

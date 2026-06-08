@@ -96,4 +96,14 @@ describe('buildGrid', () => {
     // 10 → level 1 (≤P25=50), 50 → level 1 (≤P25), 100 → level 2 (≤P50), 200 → level 3 (≤P75), 1000 → level 4 (>P75)
     expect(levels).toEqual([1, 1, 2, 3, 4]);
   });
+
+  it('computes totalValue as sum of all values', () => {
+    const data: DailyData[] = [
+      { date: '2026-06-01', value: 100 },
+      { date: '2026-06-02', value: 200 },
+      { date: '2026-06-03', value: 50 },
+    ];
+    const grid = buildGrid(data, '2026-06-01', '2026-06-03');
+    expect(grid.totalValue).toBe(350);
+  });
 });

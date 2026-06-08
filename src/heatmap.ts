@@ -16,6 +16,7 @@ export interface GridData {
   weeks: WeekData[];
   dayLabels: string[];
   maxValue: number;
+  totalValue: number;
 }
 
 const MONTHS = ['Jan', 'Feb', 'Mar', 'Apr', 'May', 'Jun', 'Jul', 'Aug', 'Sep', 'Oct', 'Nov', 'Dec'];
@@ -101,8 +102,9 @@ export function buildGrid(
   }));
 
   const maxValue = Math.max(...allValues, 0);
+  const totalValue = allValues.reduce((a, b) => a + b, 0);
 
-  return { rows, weeks, dayLabels: DAYS, maxValue };
+  return { rows, weeks, dayLabels: DAYS, maxValue, totalValue };
 }
 
 function finishWeek(
@@ -112,23 +114,24 @@ function finishWeek(
   monthLabel: string,
 ): WeekData {
   const cells: GridCell[] = [];
-  const firstDay = dates[0].getDay();
-  for (let i = 0; i < firstDay; i++) {
-    cells.push({ date: '', value: 0, level: -1 });
-  }
 
+  // Build 7-slot array, positioned by day of week
   for (const date of dates) {
     const dateStr = toDateStr(date);
+    const dayIdx = date.getDay(); // 0=Sun
     const value = dataMap.get(dateStr);
     if (value === undefined) {
-      cells.push({ date: dateStr, value: 0, level: -1 });
+      cells[dayIdx] = { date: dateStr, value: 0, level: -1 };
     } else {
-      cells.push({ date: dateStr, value, level: computeLevel(value, thresholds) });
+      cells[dayIdx] = { date: dateStr, value, level: computeLevel(value, thresholds) };
     }
   }
 
-  while (cells.length < 7) {
-    cells.push({ date: '', value: 0, level: -1 });
+  // Fill any missing slots with empty cells
+  for (let i = 0; i < 7; i++) {
+    if (!cells[i]) {
+      cells[i] = { date: '', value: 0, level: -1 };
+    }
   }
 
   return { monthLabel, cells };

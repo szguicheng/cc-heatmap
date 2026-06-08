@@ -1,5 +1,5 @@
 import type { GridData } from './heatmap.js';
-import { getColors, emptyColor, type ThemeName } from './colors.js';
+import { getColors, emptyColor, noDataColor, type ThemeName } from './colors.js';
 import type { Metric } from './data.js';
 
 function esc(s: string): string {
@@ -17,12 +17,18 @@ function formatTooltip(date: string, value: number, metric: string): string {
   return `${date} · ${formatValue(value)} ${label}`;
 }
 
+function metricLabel(metric: Metric): string {
+  if (metric === 'tool-calls') return 'tool calls';
+  return metric;
+}
+
 export function renderHtml(grid: GridData, metric: Metric, theme: ThemeName): string {
   const colors = getColors(theme);
   const label = esc(metric);
+  const mLabel = esc(metricLabel(metric));
   const totalCols = grid.weeks.length + 1;
 
-  // Build month labels (row 1)
+  // Build month labels (row 1), placed at the column for that week
   let monthLabelsHtml = '';
   for (const [weekIdx, week] of grid.weeks.entries()) {
     if (week.monthLabel) {
@@ -40,23 +46,21 @@ export function renderHtml(grid: GridData, metric: Metric, theme: ThemeName): st
     }
   }
 
-  // Build day cells with explicit grid positioning
-  let cellsHtml = '';
+  // Build cells: each cell at (weekIdx+2, dayOfWeek+2) using explicit grid positioning
+  let allCells = '';
   for (const [weekIdx, week] of grid.weeks.entries()) {
-    for (const [dayIdx, cell] of week.cells.entries()) {
-      const col = weekIdx + 2;
-      const row = dayIdx + 2;
+    const col = weekIdx + 2;
 
-      if (cell.date === '') {
-        cellsHtml +=
-          `<div style="grid-column:${col};grid-row:${row}" class="cell empty-pad"></div>`;
-        continue;
-      }
+    for (const cell of week.cells) {
+      if (cell.date === '') continue;
+
+      const d = new Date(cell.date + 'T00:00:00');
+      const row = d.getDay() + 2; // 0=Sun → row 2
 
       let bg: string;
       let tooltip: string;
       if (cell.level === -1) {
-        bg = `${emptyColor};opacity:0.25`;
+        bg = noDataColor;
         tooltip = `${esc(cell.date)} · No data`;
       } else if (cell.level === 0) {
         bg = colors[0];
@@ -65,7 +69,7 @@ export function renderHtml(grid: GridData, metric: Metric, theme: ThemeName): st
         bg = colors[cell.level - 1];
         tooltip = formatTooltip(cell.date, cell.value, label);
       }
-      cellsHtml +=
+      allCells +=
         `<div class="cell" style="grid-column:${col};grid-row:${row};background:${bg}" title="${esc(tooltip)}" data-level="${cell.level}"></div>`;
     }
   }
@@ -74,6 +78,8 @@ export function renderHtml(grid: GridData, metric: Metric, theme: ThemeName): st
   const legendBoxes = colors
     .map((c) => `<div class="legend-box" style="background:${c}"></div>`)
     .join('');
+
+  const totalStr = formatValue(grid.totalValue);
 
   return `<!DOCTYPE html>
 <html lang="en">
@@ -124,7 +130,6 @@ h1 {
   height: 13px;
   border-radius: 2px;
 }
-.cell.empty-pad { background: transparent; }
 .day-label {
   font-size: 10px;
   line-height: 13px;
@@ -132,18 +137,26 @@ h1 {
   display: flex;
   align-items: center;
 }
+.footer {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-top: 1rem;
+  font-size: 11px;
+  color: #6e7681;
+}
 .legend {
   display: flex;
   align-items: center;
   gap: 4px;
-  margin-top: 1rem;
-  font-size: 11px;
-  color: #6e7681;
 }
 .legend-box {
   width: 13px;
   height: 13px;
   border-radius: 2px;
+}
+.total {
+  text-align: right;
 }
 </style>
 </head>
@@ -154,13 +167,16 @@ h1 {
     <div class="heatmap-grid">
       ${monthLabelsHtml}
       ${dayLabelsHtml}
-      ${cellsHtml}
+      ${allCells}
     </div>
   </div>
-  <div class="legend">
-    <span>Less</span>
-    ${legendBoxes}
-    <span>More</span>
+  <div class="footer">
+    <div class="legend">
+      <span>Less</span>
+      ${legendBoxes}
+      <span>More</span>
+    </div>
+    <div class="total">${totalStr} ${mLabel}</div>
   </div>
 </div>
 </body>
