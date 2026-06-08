@@ -59,7 +59,7 @@ export function renderHtml(
     const col = weekIdx + 2;
 
     for (const cell of week.cells) {
-      if (cell.date === '') continue;
+      if (!cell || cell.date === '') continue;
 
       const d = new Date(cell.date + 'T00:00:00');
       const row = d.getDay() + 2;

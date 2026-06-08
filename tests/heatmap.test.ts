@@ -26,9 +26,8 @@ describe('computeLevel', () => {
     expect(computeLevel(100, [10, 20, 30, 40])).toBe(4);
   });
 
-  it('handles empty thresholds (all levels 0)', () => {
-    const result = computeLevel(100, []);
-    expect(result).toBe(4);
+  it('handles empty thresholds', () => {
+    expect(computeLevel(100, [])).toBe(4);
   });
 
   it('handles single value in thresholds', () => {
@@ -38,7 +37,7 @@ describe('computeLevel', () => {
 });
 
 describe('buildGrid', () => {
-  it('builds a grid with correct number of rows', () => {
+  it('builds a grid with 7 rows', () => {
     const data: DailyData[] = [
       { date: '2026-06-01', value: 100 },
       { date: '2026-06-07', value: 200 },
@@ -52,17 +51,30 @@ describe('buildGrid', () => {
     const data: DailyData[] = [{ date: '2026-06-01', value: 100 }];
     const grid = buildGrid(data, '2026-06-01', '2026-06-01');
 
-    // Row 0 = Sun, Row 1 = Mon
+    // Row 1 = Mon, should have the cell
     const monCell = grid.rows[1].cells[0];
     expect(monCell.date).toBe('2026-06-01');
     expect(monCell.value).toBe(100);
   });
 
-  it('fills empty cells for days with no data', () => {
+  it('includes all dates in range, no padding', () => {
     const data: DailyData[] = [{ date: '2026-06-01', value: 100 }];
     const grid = buildGrid(data, '2026-06-01', '2026-06-03');
 
-    // 2026-06-02 has no data — should exist as empty cell, Tue = row 2
+    // One week with Mon-Wed: Week has 3 cells at indices 1,2,3 (Mon,Tue,Wed)
+    expect(grid.weeks).toHaveLength(1);
+    const week = grid.weeks[0];
+    expect(week.cells[0]).toBeUndefined(); // Sun - not in range
+    expect(week.cells[1]!.date).toBe('2026-06-01'); // Mon
+    expect(week.cells[2]!.date).toBe('2026-06-02'); // Tue - in range, no data
+    expect(week.cells[3]!.date).toBe('2026-06-03'); // Wed - in range, no data
+    expect(week.cells[4]).toBeUndefined(); // Thu - not in range
+  });
+
+  it('no-data day is in range but has level -1', () => {
+    const data: DailyData[] = [{ date: '2026-06-01', value: 100 }];
+    const grid = buildGrid(data, '2026-06-01', '2026-06-03');
+
     const tueCell = grid.rows[2].cells[0];
     expect(tueCell.date).toBe('2026-06-02');
     expect(tueCell.value).toBe(0);
@@ -82,19 +94,20 @@ describe('buildGrid', () => {
     expect(monthLabels[2]).toBe('');
   });
 
-  it('calculates color levels in cells', () => {
+  it('last week ends at toDate, not Saturday', () => {
+    // 2026-06-03 is Wednesday. Range Mon-Fri: June 1-5
     const data: DailyData[] = [
       { date: '2026-06-01', value: 10 },
-      { date: '2026-06-02', value: 50 },
-      { date: '2026-06-03', value: 100 },
-      { date: '2026-06-04', value: 200 },
-      { date: '2026-06-05', value: 1000 },
     ];
     const grid = buildGrid(data, '2026-06-01', '2026-06-05');
 
-    const levels = grid.rows.flatMap(r => r.cells).map(c => c.level).filter(l => l >= 0);
-    // 10 → level 1 (≤P25=50), 50 → level 1 (≤P25), 100 → level 2 (≤P50), 200 → level 3 (≤P75), 1000 → level 4 (>P75)
-    expect(levels).toEqual([1, 1, 2, 3, 4]);
+    // Single week, Mon-Fri. No cells for Sun(0) or Sat(6)
+    const week = grid.weeks[0];
+    expect(week.cells[0]).toBeUndefined(); // Sun not in range
+    expect(week.cells[1]!.date).toBe('2026-06-01'); // Mon
+    expect(week.cells[5]!.date).toBe('2026-06-05'); // Fri
+    expect(week.cells[6]).toBeUndefined(); // Sat not in range
+    expect(grid.weeks).toHaveLength(1);
   });
 
   it('computes totalValue as sum of all values', () => {

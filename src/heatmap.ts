@@ -57,7 +57,6 @@ export function buildGrid(
   const start = new Date(fromDate + 'T00:00:00');
   const end = new Date(toDate + 'T00:00:00');
 
-  // Collect all dates into weeks (Sun-Sat)
   const dates: Date[] = [];
   const cursor = new Date(start);
   while (cursor <= end) {
@@ -65,6 +64,7 @@ export function buildGrid(
     cursor.setDate(cursor.getDate() + 1);
   }
 
+  // Group dates into weeks (Sun-Sat), no padding
   const rawWeeks: Date[][] = [];
   let currentRaw: Date[] = [];
 
@@ -79,8 +79,7 @@ export function buildGrid(
     rawWeeks.push(currentRaw);
   }
 
-  // Determine month labels: label a week with a month if any date in that
-  // week falls in that month AND that month hasn't been labeled yet.
+  // Determine month labels
   const emittedMonths = new Set<string>();
   const weeks: WeekData[] = [];
 
@@ -97,6 +96,7 @@ export function buildGrid(
     weeks.push(finishWeek(weekDates, dataMap, thresholds, label));
   }
 
+  // Build rows: each row corresponds to a day of week (0=Sun..6=Sat)
   const rows = Array.from({ length: 7 }, (_rowIdx, rowIdx) => ({
     cells: weeks.map(week => week.cells[rowIdx] ?? { date: '', value: 0, level: -1 }),
   }));
@@ -113,24 +113,17 @@ function finishWeek(
   thresholds: number[],
   monthLabel: string,
 ): WeekData {
+  // Only build cells for dates that exist — slot by day-of-week, no padding
   const cells: GridCell[] = [];
 
-  // Build 7-slot array, positioned by day of week
   for (const date of dates) {
     const dateStr = toDateStr(date);
-    const dayIdx = date.getDay(); // 0=Sun
+    const dayIdx = date.getDay();
     const value = dataMap.get(dateStr);
     if (value === undefined) {
       cells[dayIdx] = { date: dateStr, value: 0, level: -1 };
     } else {
       cells[dayIdx] = { date: dateStr, value, level: computeLevel(value, thresholds) };
-    }
-  }
-
-  // Fill any missing slots with empty cells
-  for (let i = 0; i < 7; i++) {
-    if (!cells[i]) {
-      cells[i] = { date: '', value: 0, level: -1 };
     }
   }
 

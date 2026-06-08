@@ -2,19 +2,17 @@ import { describe, it, expect } from 'vitest';
 import { renderHtml } from '../src/render.js';
 import type { GridData } from '../src/heatmap.js';
 
-// 2026-06-01 is Monday. Week layout by day-of-week (0=Sun..6=Sat)
+// 2026-06-01 is Monday. Sparse week: only cells at their day-of-week index
 const mockGrid: GridData = {
   weeks: [
     {
       monthLabel: 'Jun',
       cells: [
-        { date: '', value: 0, level: -1 },
-        { date: '2026-06-01', value: 100, level: 2 },
-        { date: '2026-06-02', value: 0, level: 0 },
-        { date: '2026-06-03', value: 50, level: 1 },
-        { date: '', value: 0, level: -1 },
-        { date: '', value: 0, level: -1 },
-        { date: '', value: 0, level: -1 },
+        // 0=Sun: undefined (not in range)
+        { date: '2026-06-01', value: 100, level: 2 },               // 1=Mon
+        { date: '2026-06-02', value: 0, level: 0 },                 // 2=Tue
+        { date: '2026-06-03', value: 50, level: 1 },                // 3=Wed
+        // 4=Thu, 5=Fri, 6=Sat: undefined (not in range)
       ],
     },
   ],
@@ -33,13 +31,13 @@ const mockGrid: GridData = {
 };
 
 describe('renderHtml', () => {
-  it('returns a string containing HTML doctype', () => {
+  it('returns HTML doctype', () => {
     const html = renderHtml(mockGrid, 'tokens', 'orange', 'dark');
     expect(html).toContain('<!DOCTYPE html>');
     expect(html).toContain('</html>');
   });
 
-  it('includes the metric label in title', () => {
+  it('includes the metric label', () => {
     const html = renderHtml(mockGrid, 'tokens', 'orange', 'dark');
     expect(html).toContain('tokens');
   });
@@ -62,7 +60,7 @@ describe('renderHtml', () => {
     expect(html).toContain('More');
   });
 
-  it('renders cell with correct data-lv attribute', () => {
+  it('renders cell with data-lv attribute', () => {
     const html = renderHtml(mockGrid, 'tokens', 'orange', 'dark');
     expect(html).toContain('data-lv="2"');
   });
