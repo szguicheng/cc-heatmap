@@ -1,3 +1,4 @@
 node_modules/
 dist/
 cc-heatmap-*.html
+.DS_Store
