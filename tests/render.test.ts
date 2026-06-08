@@ -74,7 +74,7 @@ describe('renderHtml', () => {
   it('renders total value prominently', () => {
     const html = renderHtml(mockGrid, 'tokens', 'orange', 'dark');
     expect(html).toContain('150');
-    expect(html).toContain('num');
+    expect(html).toContain('<h1>');
   });
 
   it('escapes user-supplied strings to prevent XSS', () => {

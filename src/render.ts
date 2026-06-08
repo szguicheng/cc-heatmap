@@ -116,9 +116,6 @@ h1{font-size:1.25rem;font-weight:600;margin-bottom:1.5rem;color:${mc.headingColo
 .ml{font-size:10px;color:${mc.mutedColor};line-height:20px}
 .c{width:13px;height:13px;border-radius:2px}
 .dl{font-size:10px;line-height:13px;color:${mc.mutedColor};display:flex;align-items:center;justify-content:flex-end;padding-right:6px}
-.hd{display:flex;justify-content:space-between;align-items:baseline;margin-bottom:1.5rem}
-.hd .num{font-size:1.5rem;font-weight:700;color:${mc.headingColor}}
-.hd .sub{font-size:0.85rem;color:${mc.mutedColor}}
 .f{display:flex;justify-content:space-between;align-items:center;margin-top:1rem;font-size:11px;color:${mc.mutedColor}}
 .lg{display:flex;align-items:center;gap:4px}
 .lb{width:13px;height:13px;border-radius:2px}
@@ -127,10 +124,7 @@ h1{font-size:1.25rem;font-weight:600;margin-bottom:1.5rem;color:${mc.headingColo
 </head>
 <body>
 <div class="wrap">
-  <div class="hd">
-    <div class="num">${totalStr} ${mLabel}</div>
-    <div class="sub">Claude Code</div>
-  </div>
+  <h1>${totalStr} ${mLabel}</h1>
   <div class="g">
     <div class="h">
       ${monthLabelsHtml}
@@ -139,12 +133,12 @@ h1{font-size:1.25rem;font-weight:600;margin-bottom:1.5rem;color:${mc.headingColo
     </div>
   </div>
   <div class="f">
-    <div></div>
     <div class="lg">
       <span>Less</span>
       ${legendBoxes}
       <span>More</span>
     </div>
+    <div class="rt">Claude Code</div>
   </div>
 </div>
 </body>
