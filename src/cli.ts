@@ -1,7 +1,7 @@
 import { homedir } from 'node:os';
 import { join } from 'node:path';
 import { writeFileSync, existsSync } from 'node:fs';
-import type { Metric } from './data.js';
+import type { Metric, DataSource } from './data.js';
 import type { ThemeName, ModeName } from './colors.js';
 import { queryDailyData } from './data.js';
 import { buildGrid } from './heatmap.js';
@@ -15,12 +15,14 @@ export interface CliOptions {
   output: string;
   theme: ThemeName;
   mode: ModeName;
+  source: DataSource;
   dbPath: string;
 }
 
 const VALID_METRICS: Metric[] = ['tokens', 'messages', 'tool-calls'];
 const VALID_THEMES: ThemeName[] = ['orange', 'green', 'purple'];
 const VALID_MODES: ModeName[] = ['dark', 'light'];
+const VALID_SOURCES: DataSource[] = ['claude', 'cc-switch'];
 
 const HELP = `cc-heatmap — Visualize Claude Code usage as a GitHub-style heatmap
 
@@ -30,13 +32,19 @@ Options:
   --days <n>        Number of days to show (default: 365)
   --from <date>     Start date YYYY-MM-DD (overrides --days when used with --to)
   --to <date>       End date YYYY-MM-DD
+  --source <name>   Data source: claude | cc-switch (default: cc-switch)
   --metric <name>   Metric: tokens | messages | tool-calls (default: tokens)
   --output <path>   Output HTML file path (default: cc-heatmap-<today>.html)
   --theme <name>    Color: orange | green | purple (default: orange)
   --mode <name>     Background: dark | light (default: dark)
-  --db <path>       Path to usage.db (default: ~/.claude/usage.db)
+  --db <path>       Database path (auto-detected by --source)
   --help, -h        Show this help
 `;
+
+function defaultDb(source: DataSource): string {
+  if (source === 'cc-switch') return join(homedir(), '.cc-switch', 'cc-switch.db');
+  return join(homedir(), '.claude', 'usage.db');
+}
 
 export function parseArgs(argv: string[]): CliOptions | null {
   const opts: Partial<CliOptions> = {};
@@ -66,6 +74,15 @@ export function parseArgs(argv: string[]): CliOptions | null {
       case '--to':
         opts.toDate = argv[++i];
         break;
+
+      case '--source': {
+        const val = argv[++i] as DataSource;
+        if (!VALID_SOURCES.includes(val)) {
+          throw new Error(`Invalid source: ${val}. Must be one of: ${VALID_SOURCES.join(', ')}`);
+        }
+        opts.source = val;
+        break;
+      }
 
       case '--metric': {
         const val = argv[++i] as Metric;
@@ -108,6 +125,8 @@ export function parseArgs(argv: string[]): CliOptions | null {
     i++;
   }
 
+  const source = opts.source ?? 'cc-switch';
+
   return {
     days: opts.days ?? 365,
     fromDate: opts.fromDate ?? '',
@@ -116,7 +135,8 @@ export function parseArgs(argv: string[]): CliOptions | null {
     output: opts.output ?? '',
     theme: opts.theme ?? 'orange',
     mode: opts.mode ?? 'dark',
-    dbPath: opts.dbPath ?? join(homedir(), '.claude', 'usage.db'),
+    source,
+    dbPath: opts.dbPath ?? defaultDb(source),
   };
 }
 
@@ -149,12 +169,13 @@ export async function main(): Promise<void> {
   if (!opts) return;
 
   if (!existsSync(opts.dbPath)) {
-    process.stderr.write(`Error: usage.db not found at ${opts.dbPath}\n`);
+    process.stderr.write(`Error: database not found at ${opts.dbPath}\n`);
+    process.stderr.write(`Try --source claude for Claude Code data or --db to specify path.\n`);
     process.exit(1);
   }
 
   const [fromDate, toDate] = computeDateRange(opts);
-  const data = queryDailyData(opts.dbPath, fromDate, toDate, opts.metric);
+  const data = queryDailyData(opts.dbPath, fromDate, toDate, opts.metric, opts.source);
   const grid = buildGrid(data, fromDate, toDate);
   const html = renderHtml(grid, opts.metric, opts.theme, opts.mode);
 

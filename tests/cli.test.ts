@@ -1,7 +1,5 @@
 import { describe, it, expect } from 'vitest';
 import { parseArgs, computeDateRange, defaultOutputPath } from '../src/cli.js';
-import { homedir } from 'node:os';
-import { join } from 'node:path';
 
 describe('parseArgs', () => {
   it('returns defaults with no arguments', () => {
@@ -9,8 +7,24 @@ describe('parseArgs', () => {
     expect(opts!.metric).toBe('tokens');
     expect(opts!.theme).toBe('orange');
     expect(opts!.mode).toBe('dark');
+    expect(opts!.source).toBe('cc-switch');
     expect(opts!.days).toBe(365);
-    expect(opts!.dbPath).toBe(join(homedir(), '.claude', 'usage.db'));
+    expect(opts!.dbPath).toContain('cc-switch.db');
+  });
+
+  it('uses claude source db path', () => {
+    const opts = parseArgs(['--source', 'claude']);
+    expect(opts!.source).toBe('claude');
+    expect(opts!.dbPath).toContain('usage.db');
+  });
+
+  it('parses --source', () => {
+    expect(parseArgs(['--source', 'claude'])!.source).toBe('claude');
+    expect(parseArgs(['--source', 'cc-switch'])!.source).toBe('cc-switch');
+  });
+
+  it('rejects invalid --source', () => {
+    expect(() => parseArgs(['--source', 'openai'])).toThrow('Invalid source');
   });
 
   it('parses --days', () => {
