@@ -71,10 +71,10 @@ describe('renderHtml', () => {
     expect(html).toContain('100');
   });
 
-  it('renders total value in footer', () => {
+  it('renders total value prominently', () => {
     const html = renderHtml(mockGrid, 'tokens', 'orange', 'dark');
     expect(html).toContain('150');
-    expect(html).toContain('tt');
+    expect(html).toContain('num');
   });
 
   it('escapes user-supplied strings to prevent XSS', () => {
